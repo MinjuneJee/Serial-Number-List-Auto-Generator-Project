@@ -1,0 +1,254 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Apr 11 01:57:16 2021
+
+@author: Minjune Jee
+"""
+
+
+import os
+import cv2
+import pytesseract  
+import xlsxwriter
+import math
+import datetime
+
+
+date_today = datetime.datetime.now()
+
+
+date_today = str(date_today)[:10]
+
+
+pytesseract.pytesseract.tesseract_cmd =r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+
+
+"""Find the directory Names"""
+
+class dir_file_name:
+    def __init__(self):        
+        self.directory_name = []
+        self.file_name = []
+        self.serial_number_list = []
+        self.current_location = os.path.dirname(os.path.realpath(__file__))
+
+    def find_directory_names(self):
+        for i in os.scandir('.'):
+            print(i.name)
+            if i.is_dir():
+                self.directory_name.append(i.name)
+
+    """get files name base on the  directory Names"""
+    
+    def find_file_name(self, directory_name):
+        for i in range(len(self.directory_name)):
+            self.file_name.append([])
+            for j in os.listdir(self.current_location + '\\' + self.directory_name[i]):
+                file = j
+                if (file.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))):
+                    self.file_name[i].append(file)
+    
+    
+                else:
+                    pass
+
+
+
+
+
+
+
+"""Extract the Serial Numbers"""
+
+class extract:
+    
+    def __init__(self):
+        global directory_name
+        global file_name
+        
+        
+        dir_file_instance = dir_file_name()
+        dir_file_instance.find_directory_names()
+        dir_file_instance.find_file_name(dir_file_instance.directory_name)
+        directory_name = dir_file_instance.directory_name
+        file_name = dir_file_instance.file_name
+        self.current_location = os.path.dirname(os.path.realpath(__file__))
+
+    def extract_serial_number(self):
+        start_point = 1
+        count_block = 0
+        count_y =1
+        count_x = start_point
+    
+        outWorkbook = xlsxwriter.Workbook(date_today + ".xlsx")
+        merge_format = outWorkbook.add_format({
+            'align': 'center',
+            'valign': 'vcenter',
+            'bottom':6,
+            'left':6
+            })
+        title_merget_format = outWorkbook.add_format({
+                                                        'bold':1,
+                                                         'bottom': 6
+                                                                    })
+        
+        date_merget_format = outWorkbook.add_format({
+                                                     'bottom': 6
+                                                                })
+    
+        double_border_bottom = outWorkbook.add_format()
+        double_border_bottom.set_bottom(6)
+        
+        
+        double_border_right = outWorkbook.add_format()
+        double_border_right.set_right(6)
+        
+        double_border_bottom_right = outWorkbook.add_format()
+        double_border_bottom_right.set_right(6)
+        double_border_bottom_right.set_bottom(6)
+        
+        outSheet = outWorkbook.add_worksheet()
+    
+        
+        outSheet.set_column('B:E', 24)
+    
+        outSheet.merge_range('A1:E1',"", title_merget_format)    
+      
+        #The title of the Excel sheet 
+        outSheet.write_rich_string('A1',"Title",date_merget_format,
+                                   "Date(yyyy-mm-dd): "+ date_today, title_merget_format)
+    
+        before_vertical_time = 1
+        
+        time_slot = ''
+        print(directory_name)
+        
+        """
+        If the name of directory is
+          1: 8:00 AM \n to \n 9:00 AM
+          2: 9:00 AM \n to \n 10:00 AM
+                 .
+                 .
+                 .
+          7: 3:00 PM \n to \n 4:00 PM
+        """
+        for i in range(len(directory_name)):
+            print('Directory: ', directory_name[i])
+            file_address = self.current_location + '\\' + directory_name[i] + '\\'
+            count = 0
+            serial_number_list = []
+    
+            
+            after_vertical_time = before_vertical_time + len(file_name[i])/4
+            
+            if len(file_name[i]) % 4 == 0:
+                after_vertical_time = math.floor(after_vertical_time) + 1
+            else:
+                after_vertical_time = math.floor(after_vertical_time) + 1
+            
+            if directory_name[i] == '1':
+                time_slot = "8:00 AM \n to \n 9:00 AM"
+            elif directory_name[i] == '2':
+                time_slot = "9:00 AM \n to \n 10:00 AM"
+            elif directory_name[i] == '3':
+                time_slot = "10:00 AM \n to \n 11:00 AM"
+            elif directory_name[i] == '4':
+                time_slot = "11:00 AM \n to \n 12:00 PM"
+            elif directory_name[i] == '5':
+                time_slot = "1:00 PM \n to \n 2:00 PM"
+            elif directory_name[i] == '6':
+                time_slot = "2:00 PM \n to \n 3:00 PM"
+            elif directory_name[i] == '7':
+                time_slot = "3:00 PM \n to \n 4:00 PM"
+                
+            outSheet.merge_range(before_vertical_time,0,after_vertical_time,0,time_slot, merge_format)
+            
+            for z in range(4):
+                outSheet.write(after_vertical_time, z , None, double_border_bottom)
+            outSheet.write(after_vertical_time, 4 , None, double_border_bottom_right)
+            
+            
+            print('testing')
+            print(file_name)
+            """reading the serial number from picture to text"""
+            for j in file_name[i]:
+                
+                file= j
+                print('Name of file:', file)
+                print('Name of directory:', directory_name[i])
+                file_address = self.current_location + '\\' + directory_name[i] + '\\' + file
+                print('file address', file_address)
+                print('count', count)
+                
+                img = cv2.imread(file_address)
+                text = pytesseract.image_to_string(img)
+                print('testing')
+                print(text)
+    
+                
+                serial_number = ''
+                
+                for z in range(0, len(text)):
+                    serial_number += text[z]
+                    if ('V306' in serial_number and text[z] == '\n'):
+                        break
+                
+                if ('V306' not in serial_number):
+                    serial_number_list.append('Error in ' + file_address)
+                else:
+                    serial_number = serial_number.split('V306')[1]
+     
+                    count_num_or_char = 0
+                    for x in serial_number:
+                        if (ord(x) >=65 and ord(x) <=90):
+                            count_num_or_char += 1
+                        elif (ord(x) >=48 and ord(x) <= 57):
+                            count_num_or_char += 1
+                    
+                    if (count_num_or_char != 4):
+                        serial_number_list.append('Error' + file_address)
+                    else:
+                        serial_number.replace('O','0')
+                        serial_number_list.append(serial_number)
+            
+    
+                    #start draw double border                
+                    
+                    if count_x == 4:
+                        outSheet.write(count_y, count_x,'common_number'+serial_number_list[count])
+                    else:
+                        outSheet.write(count_y, count_x,'common_number'+serial_number_list[count])
+                    count += 1
+                    count_x += + 1
+                    
+                if count_x == 5:
+                    count_y = count_y + 1
+                    count_x = start_point
+            
+            if len(file_name[i]) != count:
+                missing_file = len(file_name[i]) - count
+                m = 0
+                for o in reversed(file_name[i]):
+                    outSheet.write(count_y, count_x,o)
+                    m += 1
+#                    outSheet.write(count_y, count_x,'The number of missing files is' + str(missing_file))
+                    count += 1
+                    count_x += + 1
+                    
+                    if count_x == 5:
+                        count_y = count_y + 1
+                        count_x = start_point
+                    if m == missing_file:
+                        break
+                        
+                    
+            count_y = after_vertical_time + 1
+            count_x = start_point
+            before_vertical_time = after_vertical_time + 1
+                
+    #    outSheet.write('A2:E2', None, double_border)
+        outWorkbook.close()
+
+proceed = extract()
+
+proceed.extract_serial_number()
